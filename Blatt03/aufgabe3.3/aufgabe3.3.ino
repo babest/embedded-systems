@@ -131,7 +131,7 @@ void TC1_Handler() {
   
   sprintf(data, "x: %6d %6d % 3.3f   |   z: %6d %6d % 3.3f", //TODO: nicer display with spacing
     analogRead(xAxisInputPin), ((int)analogRead(xAxisInputPin) - (int)analogRead(vrefInputPin)), currentXAxisValue,
-    analogRead(zAxisInputPin), (analogRead(zAxisInputPin) - analogRead(vrefInputPin)), currentZAxisValue);
+    analogRead(zAxisInputPin), ((int)analogRead(zAxisInputPin) - (int)analogRead(vrefInputPin)), currentZAxisValue);
   
   servoPos += currentZAxisValue / 10;
   

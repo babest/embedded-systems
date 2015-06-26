@@ -15,6 +15,7 @@ int LCD_D     = HIGH;
 const int LCD_X     = 84;
 const int LCD_Y     = 48;
 const int LCD_BANKS = LCD_Y / 8;
+const int LCD_CHAR_WIDTH = 6;
 
 unsigned int LCD_Buffer[LCD_BANKS][LCD_X];
 unsigned int LCD_POS = 0;
@@ -49,8 +50,8 @@ void setup(void)
   sendCommand(0x20); // 0010 0000
   sendCommand(0x0C); // 0000 1100
 
-  drawChessField();
-  flushLCD();
+  drawString(2, "<Hello World>");
+  drawString(3, "--Hello World--");
 }
 
 
@@ -87,6 +88,23 @@ int drawChar(unsigned int x, unsigned int yBank, char character)
       }
     }
 
+    flushLCD();
+
+    return 0;
+  }
+  return -1;
+}
+
+int drawString(unsigned int yBank, const char* string)
+{
+  if (strlen(string) <= LCD_X / LCD_CHAR_WIDTH || yBank < LCD_BANKS) {
+    int xStartPos = (LCD_X - (strlen(string) * LCD_CHAR_WIDTH)) / 2;
+
+    for (int i = 0; i < strlen(string); ++i) {
+      drawChar(xStartPos + (i * LCD_CHAR_WIDTH), yBank, string[i]);
+    }
+
+    flushLCD();
     return 0;
   }
   return -1;
@@ -125,6 +143,7 @@ void gotoXY(unsigned int x, unsigned int y)
 
 void loop(void)
 {
+  
 }
 
 
@@ -137,4 +156,6 @@ void drawChessField()
       setPixel(x, y + 1, (1 - (x % 2)));
     }
   }
+
+  flushLCD();
 }

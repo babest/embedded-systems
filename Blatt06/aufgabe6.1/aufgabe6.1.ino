@@ -18,6 +18,7 @@ const int LCD_X     = 84;
 const int LCD_Y     = 48;
 const int LCD_BANKS = LCD_Y / 8;
 const int LCD_CHAR_WIDTH = 6;
+const int LCD_CPL   = LCD_X / LCD_CHAR_WIDTH;
 
 unsigned int LCD_Buffer[LCD_BANKS][LCD_X];
 unsigned int LCD_POS = 0;
@@ -122,7 +123,7 @@ int drawChar(unsigned int x, unsigned int yBank, char character)
 
 int drawString(unsigned int yBank, const char* string)
 {
-  if (strlen(string) <= LCD_X / LCD_CHAR_WIDTH || yBank < LCD_BANKS) {
+  if (strlen(string) <= LCD_CPL || yBank < LCD_BANKS) {
     int xStartPos = (LCD_X - (strlen(string) * LCD_CHAR_WIDTH)) / 2;
 
     for (int i = 0; i < strlen(string); ++i) {
@@ -133,6 +134,79 @@ int drawString(unsigned int yBank, const char* string)
     return 0;
   }
   return -1;
+}
+
+int readImageHeader(const char* header, unsigned int* x, unsigned int* y)
+{
+  *y = 0;
+  *x = 0;
+
+  
+  *x = atoi(header);
+  
+  for(int i = 0; i < strlen(header); i++)
+  {
+    if(header[i] == ',')
+    {
+      *y = atoi(header + i + 1);
+      return 0;
+    }
+  }
+  return -1;
+}
+
+int drawImage(char* rawData)
+{
+  unsigned int imageSizeX, imageSizeY;
+  
+  char* pch = strtok(rawData, "\n");
+  readImageHeader(pch, &imageSizeX, &imageSizeY);
+  
+  unsigned int xOffset, yOffset;
+  xOffset = (LCD_X - imageSizeX) / 2;
+  yOffset = (LCD_Y - imageSizeY) / 2;
+  
+  for(int y = 0; y < imageSizeY; y++)
+  {
+    for(int x = 0; x < imageSizeX; x++)
+    {
+      pch = strtok(NULL, ",\n");
+      
+      setPixel(x+xOffset, y+yOffset, (*pch == '1') );
+      
+    }
+  }
+  
+  flushLCD();
+  
+}
+
+int scrollString(unsigned int yBank, const char* string) {
+  //Temporärer String Buffer, der einmal komplett aufs Display passt
+  char drawStringBuffer[LCD_CPL + 1];
+  //Den temporären String Buffer terminieren (strlen muss funktionieren)
+  drawStringBuffer[LCD_CPL] = '\0';
+  
+  //loopCounterMax definiert die Druchgänge in der Schleife [Scrollschritte]
+  unsigned int loopCounterMax = strlen(string);
+  if(loopCounterMax < LCD_CPL) {
+    //Der Text passt aufs Display? Dann kein Scrollen, nur anzeigen
+    loopCounterMax = 1;
+  } else if(LCD_CPL < strlen(string)) {
+    //Der Text muss gescrollt werden.
+    //Aber nur bis zum letzten Zeichen. Keine Leerzeichen am Ende
+    loopCounterMax-= LCD_CPL + 1;
+  }
+  
+  //Den Text anzeigen
+  for(int i=0; i<loopCounterMax; i++) {
+    //Aktuellen Textausschnitt in den Buffer kopieren
+    strncpy(drawStringBuffer, string+i, LCD_CPL);
+    //Text auf dem Display anzeigen
+    drawString(yBank, drawStringBuffer);
+    //Dem Mensch die Chance lassen, den Text zu lesen
+    delay(250);
+  }
 }
 
 void sendCommand(unsigned int value) {
@@ -202,13 +276,54 @@ int readFileToBuffer(char* filename, char *buffer, unsigned int length) {
 
 void loop(void)
 {
-  char buffer[200];
-  readFileToBuffer("FILE1.TXT", buffer, 200);
-  drawString(0, buffer);
-  delay(2000);
+    
+  /*int imageTextLength = LCD_X * LCD_Y * 2 + 20;
+  char textContent[imageTextLength];
   
-  File dir = SD.open("/");
-  printDirectory(dir, 2);
+  clearDisplay();
+
+  clearString(textContent, imageTextLength);
+  readFileToBuffer("TAMS.IMG", textContent, imageTextLength);
+  drawImage(textContent);
+  
+  delay(1000);
+
+  clearDisplay();
+
+  clearString(textContent, imageTextLength);
+  readFileToBuffer("SMILE1.IMG", textContent, imageTextLength);
+  drawImage(textContent);
+  
+  delay(1000);
+  
+  clearDisplay();
+
+  clearString(textContent, imageTextLength);
+  readFileToBuffer("SMILE2.IMG", textContent, imageTextLength);
+  drawImage(textContent);
+  
+  delay(1000);
+  
+  clearDisplay();
+
+  clearString(textContent, imageTextLength);
+  readFileToBuffer("SMILE3.IMG", textContent, imageTextLength);
+  drawImage(textContent);
+  
+  delay(1000);
+  
+  return;*/
+  
+  char textContent[200];
+  
+  clearString(textContent, 200);
+  readFileToBuffer("TEXT1.TXT", textContent, 200);
+  scrollString(0, textContent);
+  
+  clearString(textContent, 200);
+  readFileToBuffer("TEXT2.TXT", textContent, 200);
+  scrollString(1, textContent);
+  delay(2000);
   
   return;
   
@@ -223,6 +338,11 @@ void loop(void)
   }
 }
 
+void clearString(char* buffer, unsigned int length) {
+  for(int i=0; i<length;++i) {
+    buffer[i] = '\0';
+  }
+}
 
 void drawChessField()
 {
@@ -237,27 +357,3 @@ void drawChessField()
   flushLCD();
 }
 
-
-void printDirectory(File dir, int numTabs) {
-   while(true) {
-
-     File entry =  dir.openNextFile();
-     if (! entry) {
-       // no more files
-       break;
-     }
-     for (uint8_t i=0; i<numTabs; i++) {
-       Serial.print('t');
-     }
-     Serial.print(entry.name());
-     if (entry.isDirectory()) {
-       Serial.println("/");
-       printDirectory(entry, numTabs+1);
-     } else {
-       // files have sizes, directories do not
-       Serial.print("tt");
-       Serial.println(entry.size(), DEC);
-     }
-     entry.close();
-   }
-}
